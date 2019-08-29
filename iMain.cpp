@@ -81,30 +81,22 @@ Object fObject(ObjectType t, double posX, double posY, double h, double w)
     res.kind = t;
     res.height = h/2;
     res.width = w/2;
-    res.centerX = posX + w/2;
-    res.centerY = posY + h/2;
-    res.StartTime = clock();
+    res.centerX = posX;
+    res.centerY = posY;
+    //res.StartTime = clock();
 
     return res;
 }
 
-double getPosY(Object ob)
+double getCenterY(Object ob)
 {
-    return ob.centerY-ob.height;
+    return ob.centerY+ob.height;
 }
-double getPosX(Object ob)
+double getCenterX(Object ob)
 {
-    return ob.centerX-ob.width;
+    return ob.centerX+ob.width;
 }
 
-void setPosX(Object *ob, double x)
-{
-    ob->centerX = x + ob->width;
-}
-void setPosY(Object *ob, double y)
-{
-    ob->centerY = y + ob->height;
-}
 void resetClock(Object *obj)
 {
     obj->StartTime = clock();
@@ -151,7 +143,7 @@ void throwArrow()
     int j;
     for (j = numOfArrows-1; j > 0; j--)
         arrowPos[j] = arrowPos[j-1];
-    arrowPos[0] = runner.centerX + runner.width; /// From Runners End
+    arrowPos[0] = runner.centerX + 2*runner.width; /// From Runners End
 }
 
 void animateThrowing()
@@ -189,11 +181,12 @@ void animateJumping()
 
     clock_t time = clock()-runner.StartTime;
 
-    if((time) > animatingTime*jumpingTStep || getPosY(runner) < initPosY)  /// End of Jumping
+    if((time) > animatingTime*jumpingTStep || runner.centerY < initPosY)  /// End of Jumping
     {
         jumpingIndex = -1;
         runnerState = 0;
-        setPosY(&runner, initPosY);
+        runner.centerY = initPosY;
+        runningIndex = 4;
         jumpingT=-1;
         animateRunner();
     }
@@ -242,7 +235,7 @@ void animateRunner()
 void moveObject( Object *obj, double dx, double dy=0)
 {
     obj->centerX -= dx;
-    if(getPosX(*obj)<0)
+    if(obj->centerX<0)
     {
         if(obj->kind==REPEATED_IMAGE)
             obj->centerX += 2*obj->width;
@@ -250,7 +243,7 @@ void moveObject( Object *obj, double dx, double dy=0)
     }
 
     obj->centerY -= dy;
-    if(getPosY(*obj)<0)
+    if(obj->centerY<0)
     {
         if(obj->kind==REPEATED_IMAGE)
             obj->centerY += 2*obj->height;
@@ -287,14 +280,14 @@ void moveObstacles(int px)
     int i;
     for(i=0; i<4; i++)
     {
-        if(getPosX(obstacle[i])>0)
+        if(obstacle[i].centerX>0)
             moveObject(&obstacle[i], px); /// Obstacles Movement
         else
         {
             if(clock()-last_obstacle>1500+(rand()%100+1)*(rand()%10+10) && clock()%3==0)  /// Obstacle Timer
             {
                 last_obstacle = clock();
-                setPosX(&obstacle[i], width);
+                obstacle[i].centerX = width;
             }
         }
     }
@@ -304,7 +297,6 @@ void checkRunnerObstacleCollusion();
 
 void animate()
 {
-    int i;
     moveObject(&soil, 15);
     moveObstacles(15);
     moveObject(&bg1, 10);
@@ -345,16 +337,16 @@ void drawCloud()
 void drawImage(Object img)
 {
     if(img.kind==IMAGE)
-        iShowBMP2(getPosX(img), getPosY(img), img.img.location, ignoreColor);
+        iShowBMP2(img.centerX, img.centerY, img.img.location, ignoreColor);
     else if(img.kind==REPEATED_IMAGE)
     {
         int i;
         for(i=0; 2*i*img.width<width; i++)
-            iShowBMP2(getPosX(img)+2*i*img.width, getPosY(img), img.img.location, ignoreColor);
+            iShowBMP2(img.centerX+2*i*img.width, img.centerY, img.img.location, ignoreColor);
     }
     else
     {
-        iFilledRectangle(getPosX(img), getPosY(img), img.width, img.height);
+        iFilledRectangle(img.centerX, img.centerY, img.width, img.height);
     }
 }
 
@@ -395,23 +387,34 @@ void checkRunnerObstacleCollusion() /// Change of Algorithm: Check border for ot
         {
             // printf("%f %f %f %f\n", obstacle[i].centerY, obstacle[i].height, runner.centerY, runner.height);
 
-            int nowX = getPosX(obstacle[i])+4, nowXmax, nowY = getPosY(obstacle[i])+4, nowYmax;
+            int nowX = obstacle[i].centerX+4, nowXmax, nowY = obstacle[i].centerY+4, nowYmax;
             nowXmax = nowX + obstacle[i].width-8;
             nowYmax = nowY + obstacle[i].height-8;
 
             int tempX, tempX2, tempY, flag=1;
 
-            for(tempX=nowX, tempX2=nowXmax, tempY=nowY; tempY<=nowYmax && flag; tempY+=10){
+            for(tempX=nowX, tempX2=nowXmax, tempY=nowY; tempY<=nowYmax && flag && (runnerState==0 || runnerState==1); tempY+=10){
                 flag = checkPoint(tempX, tempY, ObsCol1) && checkPoint(tempX2, tempY, ObsCol1);
             }
 
-            for(tempX=nowX, tempY=nowYmax; tempX<=nowXmax && flag; tempX+=7){
+            for(tempX=nowX, tempY=nowYmax; tempX<=nowXmax && flag && runnerState==2; tempX+=7){
                 flag = checkPoint(tempX, tempY, ObsCol1);
             }
 
             if(!flag) iPauseTimer(0);
         }
     }
+}
+
+void drawObstacle()
+{
+    int i;
+    for(i=0; i<4; i++)
+    {
+        if(obstacle[i].centerX>0)
+            drawImage(obstacle[i]);
+    }
+
 }
 
 /// Called Every time
@@ -428,9 +431,7 @@ void iDraw()
     drawImage(bg2);
     drawImage(bg1);
     drawImage(soil);
-    for(i=0; i<4; i++)
-        if(getPosX(obstacle[i])>0)
-            drawImage(obstacle[i]);
+    drawObstacle();
     drawImage(runner);
     drawArrow();
     iSetColor(fColor(18, 39, 60));
