@@ -282,6 +282,8 @@ void moveCloud()
     }
 }
 
+const int obstacleMaxW = 51, obstacleMinW = 40;
+
 void moveObstacles(int px)
 {
     int i;
@@ -295,6 +297,8 @@ void moveObstacles(int px)
             {
                 last_obstacle = clock();
                 obstacle[i].centerX = width;
+                obstacle[i].width = obstacleMinW + rand()%(obstacleMaxW-obstacleMinW);
+
             }
         }
     }
