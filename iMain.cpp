@@ -18,6 +18,9 @@ int soilW = 37, posSoil = soilW;
 int bgW = 200, bgPos = bgW, bg2Pos=bgW;
 int cloudPos[3], cloudX[3], cloudMin = 300, cloudMax = 550;
 
+/// Point System
+int point = 0;
+
 //int i;
 
 /// Color Modules
@@ -155,7 +158,11 @@ void animateThrowing()
         runnerState = 0; /// RunningState
         throwingIndex = -1;
 
-        throwArrow();
+        if(point>=100){
+            throwArrow();
+            point-=100;
+        }
+
         animateRunner();
     }
     else
@@ -303,6 +310,7 @@ void animate()
     moveObject(&bg2, 5);
     moveCloud();
 
+    point++;
     animateRunner();
     // checkRunnerObstacleCollusion();
 }
@@ -417,6 +425,15 @@ void drawObstacle()
 
 }
 
+char temp[20];
+void printPoint()
+{
+    sprintf(temp, "%08d", point);
+    iSetColor(fColor(0, 255, 255));
+    iText(90, 500, temp, GLUT_BITMAP_HELVETICA_18);
+    //printf("%s\n", temp);
+}
+
 /// Called Every time
 void iDraw()
 {
@@ -439,6 +456,8 @@ void iDraw()
 
     checkArrowObstacleCollusion();
     checkRunnerObstacleCollusion();
+
+    printPoint();
 
     /// All Draw Gone
 }
