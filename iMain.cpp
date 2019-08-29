@@ -125,7 +125,7 @@ double jumpingVel;// = 4.0*jumpingHeight/jumpingTime;
 double jumpingAcc;
 Color ObsCol1, ObsCol2;
 
-Object soil, bg1, bg2, obstacle[4];
+Object soil, bg1, bg2, obstacle[4], solidObstacle[4];
 
 void animateRunning()
 {
@@ -301,6 +301,17 @@ void moveObstacles(int px)
 
             }
         }
+
+        if(solidObstacle[i].centerX>0)
+            moveObject(&solidObstacle[i], px);
+        else{
+            if(clock()-last_obstacle>1500+(rand()%100+1)*(rand()%10+10) && clock()%3==0)
+            {
+                last_obstacle = clock();
+                solidObstacle[i].centerX = width;
+                solidObstacle[i].width = obstacleMinW + rand()%(obstacleMaxW-obstacleMinW);
+            }
+        }
     }
 }
 
@@ -415,16 +426,45 @@ void checkRunnerObstacleCollusion() /// Change of Algorithm: Check border for ot
 
             if(!flag) iPauseTimer(0);
         }
+        else if(abs(solidObstacle[i].centerX-runner.centerX) <= (runner.width+solidObstacle[i].width) && solidObstacle[i].centerX>200)
+        {
+            // printf("%f %f %f %f\n", obstacle[i].centerY, obstacle[i].height, runner.centerY, runner.height);
+
+            int nowX = solidObstacle[i].centerX+4, nowXmax, nowY = solidObstacle[i].centerY+4, nowYmax;
+            nowXmax = nowX + solidObstacle[i].width-8;
+            nowYmax = nowY + solidObstacle[i].height-8;
+
+            int tempX, tempX2, tempY, flag=1;
+
+            for(tempX=nowX, tempX2=nowXmax, tempY=nowY; tempY<=nowYmax && flag && (runnerState==0 || runnerState==1); tempY+=10){
+                flag = checkPoint(tempX, tempY, ObsCol2) && checkPoint(tempX2, tempY, ObsCol2);
+            }
+
+            for(tempX=nowX, tempY=nowYmax; tempX<=nowXmax && flag && runnerState==2; tempX+=7){
+                flag = checkPoint(tempX, tempY, ObsCol2);
+            }
+
+            if(!flag) iPauseTimer(0);
+        }
     }
 }
 
 void drawObstacle()
 {
     int i;
+
+    iSetColor(ObsCol1);
     for(i=0; i<4; i++)
     {
         if(obstacle[i].centerX>0)
             drawImage(obstacle[i]);
+    }
+
+    iSetColor(ObsCol2);
+    for(i=0; i<4; i++)
+    {
+        if(solidObstacle[i].centerX>0)
+            drawImage(solidObstacle[i]);
     }
 
 }
@@ -542,11 +582,12 @@ void varInitialize()
     bg2 = fObject(REPEATED_IMAGE, 0, 40, 200, 200);
     strcpy(bg2.img.location, "bg-2.bmp");
     ObsCol1 = fColor(200, 30, 20);
+    ObsCol2 = fColor(200, 240, 30);
 
     int i=0;
     for(i=0; i<4; i++)
     {
-        obstacle[i] = fObject(RECTANGLE, -1, initPosY, 100, 100);
+        obstacle[i] = solidObstacle[i] = fObject(RECTANGLE, -1, initPosY, 100, 100);
     }
 
     /*    *imgUnion       = run;
