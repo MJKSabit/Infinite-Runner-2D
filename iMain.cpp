@@ -7,12 +7,14 @@ char *background = "bg.bmp";
 
 const int height = 600, width = 1000;
 
+enum STATES {LOADING, MAIN_MENU, PAUSE_MENU, IN_GAME, GAME_OVER};
+STATES gameState;
+char* backgrounds[] = {"Start.bmp", "menu.bmp", "back.bmp", "game-over.bmp"};
 
 // char **imgUnion[3];
 
 const int velocityTimeStep = 21, heightY = 20, initPosY = 40;
 int velT;
-
 
 int soilW = 37, posSoil = soilW;
 int bgW = 200, bgPos = bgW, bg2Pos=bgW;
@@ -117,13 +119,13 @@ char *jump[4] = {/*"j1.bmp",*/ "j2.bmp", "j3.bmp", "j4.bmp", "j5.bmp"};
 char *arrow_loc = "arrow.bmp";
 int numberOfPic[] = {6, 3, 4};
 
-clock_t animatingTime = 50, last_cloud = -4000, last_obstacle; /// In MiliSec
+clock_t animatingTime = 50, last_cloud = -4000, last_obstacle, start = clock(); /// In MiliSec
 
 const int jumpingHeight = 120, jumpingTStep=17; /// In Pixel
 int jumpingT=-1;
 double jumpingVel;// = 4.0*jumpingHeight/jumpingTime;
 double jumpingAcc;
-Color ObsCol1, ObsCol2;
+Color ObsCol1, ObsCol2, bg = fColor(218, 239, 260);
 
 Object soil, bg1, bg2, obstacle[4], solidObstacle[4];
 
@@ -140,6 +142,7 @@ void animateRunning()
 typedef int Arrow;
 int numOfArrows = 15;
 Arrow arrowPos[15];
+int gameFinished = 0, pauseStatus = 0;
 
 void throwArrow()
 {
@@ -403,7 +406,7 @@ int checkPoint(double x, double y, Color CheckColor)
 
 void checkRunnerObstacleCollusion() /// Change of Algorithm: Check border for other color :: DONE
 {
-    int i;
+    int i, flag=1;
     for(i=0; i<4; i++)
     {
         if(abs(obstacle[i].centerX-runner.centerX) <= (runner.width+obstacle[i].width) && obstacle[i].centerX>200)
@@ -414,17 +417,15 @@ void checkRunnerObstacleCollusion() /// Change of Algorithm: Check border for ot
             nowXmax = nowX + obstacle[i].width-8;
             nowYmax = nowY + obstacle[i].height-8;
 
-            int tempX, tempX2, tempY, flag=1;
+            int tempX, tempX2, tempY;
 
             for(tempX=nowX, tempX2=nowXmax, tempY=nowY; tempY<=nowYmax && flag && (runnerState==0 || runnerState==1); tempY+=10){
                 flag = checkPoint(tempX, tempY, ObsCol1) && checkPoint(tempX2, tempY, ObsCol1);
             }
 
-            for(tempX=nowX, tempY=nowYmax; tempX<=nowXmax && flag && runnerState==2; tempX+=7){
+            for(tempX=nowX, tempY=nowYmax; tempX<=nowXmax && flag && runnerState==2; tempX+=3){
                 flag = checkPoint(tempX, tempY, ObsCol1);
             }
-
-            if(!flag) iPauseTimer(0);
         }
         else if(abs(solidObstacle[i].centerX-runner.centerX) <= (runner.width+solidObstacle[i].width) && solidObstacle[i].centerX>200)
         {
@@ -434,7 +435,7 @@ void checkRunnerObstacleCollusion() /// Change of Algorithm: Check border for ot
             nowXmax = nowX + solidObstacle[i].width-8;
             nowYmax = nowY + solidObstacle[i].height-8;
 
-            int tempX, tempX2, tempY, flag=1;
+            int tempX, tempX2, tempY;
 
             for(tempX=nowX, tempX2=nowXmax, tempY=nowY; tempY<=nowYmax && flag && (runnerState==0 || runnerState==1); tempY+=10){
                 flag = checkPoint(tempX, tempY, ObsCol2) && checkPoint(tempX2, tempY, ObsCol2);
@@ -443,8 +444,10 @@ void checkRunnerObstacleCollusion() /// Change of Algorithm: Check border for ot
             for(tempX=nowX, tempY=nowYmax; tempX<=nowXmax && flag && runnerState==2; tempX+=7){
                 flag = checkPoint(tempX, tempY, ObsCol2);
             }
-
-            if(!flag) iPauseTimer(0);
+        }
+        if(!flag){
+            iPauseTimer(0);
+            gameFinished = pauseStatus = 1;
         }
     }
 }
@@ -483,25 +486,35 @@ void iDraw()
 {
     int i;
     iClear();
-    iSetColor(fColor(18, 39, 60));
-    iFilledRectangle(0, 0, width, height);
-    drawCloud();
-    //drawSoil();
-    iSetColor(ObsCol1);
-    //drawObs();
-    drawImage(bg2);
-    drawImage(bg1);
-    drawImage(soil);
-    drawObstacle();
-    drawImage(runner);
-    drawArrow();
-    iSetColor(fColor(18, 39, 60));
-    iFilledRectangle(0, 0, bg1.width*2, height);
+    if(gameState==IN_GAME){
+        iSetColor(fColor(18, 39, 60));
+        iFilledRectangle(0, 0, width, height);
+        drawCloud();
+        iSetColor(ObsCol1);
+        drawImage(bg2);
+        drawImage(bg1);
+        drawImage(soil);
+        drawObstacle();
+        drawImage(runner);
+        drawArrow();
+        iSetColor(fColor(18, 39, 60));
+        iFilledRectangle(0, 0, bg1.width*2, height);
 
-    checkArrowObstacleCollusion();
-    checkRunnerObstacleCollusion();
+        checkArrowObstacleCollusion();
+        checkRunnerObstacleCollusion();
+        printPoint();
+    }
+    else if(gameState==LOADING){
+        iShowBMP(0, 0, backgrounds[gameState]);
 
-    printPoint();
+        if(clock()-start>1000) gameState = MAIN_MENU;
+    }
+    else if(gameState==MAIN_MENU){
+        iShowBMP(0, 0, backgrounds[gameState]);
+    }
+    else if(gameState==PAUSE_MENU){
+        iShowBMP(0, 0, backgrounds[gameState]);
+    }
 
     /// All Draw Gone
 }
@@ -515,6 +528,8 @@ void iMouse(int button, int state, int mx, int my)
 {
 
 }
+
+
 
 /*
 	function iKeyboard() is called whenever the user hits a key in keyboard.
@@ -539,6 +554,17 @@ void iKeyboard(unsigned char key)
     {
         if(runnerState==0)
             runnerState = 2;
+    }
+    if(key=='p' && !gameFinished)
+    {
+        if(!pauseStatus){
+            iPauseTimer(0);
+            pauseStatus = 1;
+        }
+        else{
+            iResumeTimer(0);
+            pauseStatus = 0;
+        }
     }
 }
 
@@ -590,10 +616,7 @@ void varInitialize()
         obstacle[i] = solidObstacle[i] = fObject(RECTANGLE, -1, initPosY, 100, 100);
     }
 
-    /*    *imgUnion       = run;
-        *(imgUnion+1)   = jump;
-        *(imgUnion+2)   = thr;*/
-
+    gameState = LOADING;
 }
 
 
@@ -602,6 +625,7 @@ int main()
 {
     //place your own initialization codes here.
     iSetTimer(animatingTime, animate);
+    iPauseTimer(0);
     varInitialize();
 
     iInitialize(width, height, "Infinite Runner 2D");
