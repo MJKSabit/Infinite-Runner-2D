@@ -9,15 +9,15 @@ const int height = 600, width = 1000;
 
 enum STATES {LOADING, MAIN_MENU, PAUSE_MENU, IN_GAME, GAME_OVER};
 STATES gameState;
-char* backgrounds[] = {"Start.bmp", "menu.bmp", "back.bmp", "game-over.bmp"};
+char* backgrounds[] = {"Start.bmp", "menu.bmp", "pause.bmp", "back.bmp", "game-over.bmp"};
 
 // char **imgUnion[3];
 
 const int velocityTimeStep = 21, heightY = 20, initPosY = 40;
 int velT;
 
-int soilW = 37, posSoil = soilW;
-int bgW = 200, bgPos = bgW, bg2Pos=bgW;
+const int soilW = 37, posSoil = soilW;
+const int bgW = 200, bgPos = bgW, bg2Pos=bgW;
 int cloudPos[3], cloudX[3], cloudMin = 300, cloudMax = 550;
 
 /// Point System
@@ -56,6 +56,7 @@ Image fImage(char* loc, int posX, int posY)
 {
     Image res;
     strcpy(res.location, loc);
+    printf("%s = %s\n", res.location, loc);
     res.posX = posX;
     res.posY = posY;
 
@@ -112,7 +113,7 @@ void drawImage(Object img);
 void animateRunner();
 
 Object runner;
-int runnerState, runningIndex, throwingIndex=-1, jumpingIndex;
+int runnerState, runningIndex=0, throwingIndex=-1, jumpingIndex;
 char *run[6] = {"r1.bmp", "r2.bmp", "r3.bmp", "r4.bmp", "r5.bmp", "r6.bmp"};
 char *thr[3] = {"t1.bmp", "t2.bmp", "t3.bmp"};
 char *jump[4] = {/*"j1.bmp",*/ "j2.bmp", "j3.bmp", "j4.bmp", "j5.bmp"};
@@ -136,13 +137,13 @@ void animateRunning()
         runningIndex -= numberOfPic[runnerState];
 
     strcpy(runner.img.location, run[runningIndex]);
+    //printf("%s = %s\n", runner.img.location, run[runningIndex]);
 }
 
 
 typedef int Arrow;
 int numOfArrows = 15;
 Arrow arrowPos[15];
-int gameFinished = 0, pauseStatus = 0;
 
 void throwArrow()
 {
@@ -363,7 +364,10 @@ void drawCloud()
 void drawImage(Object img)
 {
     if(img.kind==IMAGE)
+    {
+        //printf("HERE X:%f Y:%f L:%s R:%s\n", img.centerX, img.centerY, img.img.location, run[runnerState]);
         iShowBMP2(img.centerX, img.centerY, img.img.location, ignoreColor);
+    }
     else if(img.kind==REPEATED_IMAGE)
     {
         int i;
@@ -447,7 +451,7 @@ void checkRunnerObstacleCollusion() /// Change of Algorithm: Check border for ot
         }
         if(!flag){
             iPauseTimer(0);
-            gameFinished = pauseStatus = 1;
+            gameState = GAME_OVER;
         }
     }
 }
@@ -473,11 +477,11 @@ void drawObstacle()
 }
 
 char temp[20];
-void printPoint()
+void printPoint(int x, int y)
 {
     sprintf(temp, "%08d", point);
     iSetColor(fColor(0, 255, 255));
-    iText(90, 500, temp, GLUT_BITMAP_HELVETICA_18);
+    iText(x, y, temp, GLUT_BITMAP_HELVETICA_18);
     //printf("%s\n", temp);
 }
 
@@ -486,6 +490,9 @@ void iDraw()
 {
     int i;
     iClear();
+
+    printf(">> %s\n", runner.img.location);
+
     if(gameState==IN_GAME){
         iSetColor(fColor(18, 39, 60));
         iFilledRectangle(0, 0, width, height);
@@ -502,7 +509,7 @@ void iDraw()
 
         checkArrowObstacleCollusion();
         checkRunnerObstacleCollusion();
-        printPoint();
+        printPoint(90, 500);
     }
     else if(gameState==LOADING){
         iShowBMP(0, 0, backgrounds[gameState]);
@@ -511,9 +518,17 @@ void iDraw()
     }
     else if(gameState==MAIN_MENU){
         iShowBMP(0, 0, backgrounds[gameState]);
+        iText(400, 400, "[P]   New Game", GLUT_BITMAP_HELVETICA_18);
+        iText(400, 300, "[END] Exit Game", GLUT_BITMAP_HELVETICA_18);
     }
     else if(gameState==PAUSE_MENU){
         iShowBMP(0, 0, backgrounds[gameState]);
+        iText(410, 210, "Press \'p\' to resume game");
+    }
+    else{
+        iShowBMP(0, 0, backgrounds[gameState]);
+        printPoint(800, 200);
+        iText(200, 100, "Press [P] to start a new game; [Space] to go to main menu; [End] to exit", GLUT_BITMAP_HELVETICA_18);
     }
 
     /// All Draw Gone
@@ -529,7 +544,8 @@ void iMouse(int button, int state, int mx, int my)
 
 }
 
-
+void varInitialize();
+void initiateNewGame();
 
 /*
 	function iKeyboard() is called whenever the user hits a key in keyboard.
@@ -547,23 +563,35 @@ void iKeyboard(unsigned char key)
     }
     if(key=='d')
     {
-        if(runnerState==0)
+        if(runnerState==0 && gameState==IN_GAME)
             runnerState = 1;
     }
     if(key==' ')
     {
-        if(runnerState==0)
+        if(runnerState==0 && gameState==IN_GAME)
             runnerState = 2;
-    }
-    if(key=='p' && !gameFinished)
-    {
-        if(!pauseStatus){
-            iPauseTimer(0);
-            pauseStatus = 1;
+        if(gameState == GAME_OVER){
+            gameState = MAIN_MENU;
         }
-        else{
+    }
+    if(key=='p')
+    {
+        if(gameState==GAME_OVER){
+            gameState=IN_GAME;
+            initiateNewGame();
+        }
+        else if(gameState==IN_GAME){
+            iPauseTimer(0);
+            gameState = PAUSE_MENU;
+        }
+        else if(gameState==MAIN_MENU) {
+            initiateNewGame();
+            gameState = IN_GAME;
+        }
+        else if(gameState==PAUSE_MENU)
+        {
             iResumeTimer(0);
-            pauseStatus = 0;
+            gameState = IN_GAME;
         }
     }
 }
@@ -595,20 +623,12 @@ void iSpecialKeyboard(unsigned char key)
     //place your codes for other keys here
 }
 
-
-void varInitialize()
+void initiateNewGame()
 {
-
+    point = 0;
     runner = fObject(IMAGE, width/2-100, initPosY, 115, 112);
-    jumpingVel = 4.0*jumpingHeight/(jumpingTStep);
-    soil = fObject(REPEATED_IMAGE, 0, 0, 54, 37);
-    strcpy(soil.img.location, "soil.bmp");
-    bg1 = fObject(REPEATED_IMAGE, 0, 40, 150, 200);
-    strcpy(bg1.img.location, "bg.bmp");
-    bg2 = fObject(REPEATED_IMAGE, 0, 40, 200, 200);
-    strcpy(bg2.img.location, "bg-2.bmp");
-    ObsCol1 = fColor(200, 30, 20);
-    ObsCol2 = fColor(200, 240, 30);
+    strcpy(runner.img.location, run[0]);
+    runnerState = 0;
 
     int i=0;
     for(i=0; i<4; i++)
@@ -616,7 +636,27 @@ void varInitialize()
         obstacle[i] = solidObstacle[i] = fObject(RECTANGLE, -1, initPosY, 100, 100);
     }
 
-    gameState = LOADING;
+    /// Arrow Reset
+
+    iResumeTimer(0);
+}
+
+void varInitialize()
+{
+
+    jumpingVel = 4.0*jumpingHeight/(jumpingTStep);
+
+    soil = fObject(REPEATED_IMAGE, 0, 0, 54, 37);
+    strcpy(soil.img.location, "soil.bmp");
+
+    bg1 = fObject(REPEATED_IMAGE, 0, 40, 150, 200);
+    strcpy(bg1.img.location, "bg.bmp");
+
+    bg2 = fObject(REPEATED_IMAGE, 0, 40, 200, 200);
+    strcpy(bg2.img.location, "bg-2.bmp");
+
+    ObsCol1 = fColor(200, 30, 20);
+    ObsCol2 = fColor(200, 240, 30);
 }
 
 
@@ -626,7 +666,10 @@ int main()
     //place your own initialization codes here.
     iSetTimer(animatingTime, animate);
     iPauseTimer(0);
+    gameState = LOADING;
     varInitialize();
+
+    initiateNewGame();
 
     iInitialize(width, height, "Infinite Runner 2D");
     return 0;
