@@ -7,9 +7,9 @@ char *background = "bg.bmp";
 
 const int height = 600, width = 1000;
 
-enum STATES {LOADING, MAIN_MENU, PAUSE_MENU, IN_GAME, GAME_OVER};
+enum STATES {LOADING, MAIN_MENU, PAUSE_MENU, IN_GAME, GAME_OVER, CREDIT};
 STATES gameState;
-char* backgrounds[] = {"Start.bmp", "menu.bmp", "pause.bmp", "back.bmp", "game-over.bmp"};
+char* backgrounds[] = {"Start.bmp", "menu.bmp", "pause.bmp", "back.bmp", "game-over.bmp", "credits.bmp"};
 
 // char **imgUnion[3];
 
@@ -56,7 +56,6 @@ Image fImage(char* loc, int posX, int posY)
 {
     Image res;
     strcpy(res.location, loc);
-    printf("%s = %s\n", res.location, loc);
     res.posX = posX;
     res.posY = posY;
 
@@ -480,7 +479,7 @@ char temp[20];
 void printPoint(int x, int y)
 {
     sprintf(temp, "%08d", point);
-    iSetColor(fColor(0, 255, 255));
+    iSetColor(fColor(255, 80, 25));
     iText(x, y, temp, GLUT_BITMAP_HELVETICA_18);
     //printf("%s\n", temp);
 }
@@ -491,11 +490,10 @@ void iDraw()
     int i;
     iClear();
 
-    printf(">> %s\n", runner.img.location);
-
     if(gameState==IN_GAME){
-        iSetColor(fColor(18, 39, 60));
-        iFilledRectangle(0, 0, width, height);
+        //iSetColor(fColor(18, 39, 60));
+        //iFilledRectangle(0, 0, width, height);
+        iShowBMP(0, 0, backgrounds[gameState]);
         drawCloud();
         iSetColor(ObsCol1);
         drawImage(bg2);
@@ -518,12 +516,18 @@ void iDraw()
     }
     else if(gameState==MAIN_MENU){
         iShowBMP(0, 0, backgrounds[gameState]);
-        iText(400, 400, "[P]   New Game", GLUT_BITMAP_HELVETICA_18);
+        iSetColor(fColor(45, 30, 89));
+        iText(400, 400, "[P] New Game", GLUT_BITMAP_HELVETICA_18);
+        iText(400, 350, "[C] Credits", GLUT_BITMAP_HELVETICA_18);
         iText(400, 300, "[END] Exit Game", GLUT_BITMAP_HELVETICA_18);
     }
     else if(gameState==PAUSE_MENU){
         iShowBMP(0, 0, backgrounds[gameState]);
         iText(410, 210, "Press \'p\' to resume game");
+    }
+    else if(gameState==CREDIT)
+    {
+        iShowBMP(0, 0, backgrounds[gameState]);
     }
     else{
         iShowBMP(0, 0, backgrounds[gameState]);
@@ -553,9 +557,9 @@ void initiateNewGame();
 	*/
 void iKeyboard(unsigned char key)
 {
-    if(key=='a')
+    if(key=='c')
     {
-
+        if(gameState==MAIN_MENU) gameState = CREDIT;
     }
     if(key=='s')
     {
@@ -570,7 +574,7 @@ void iKeyboard(unsigned char key)
     {
         if(runnerState==0 && gameState==IN_GAME)
             runnerState = 2;
-        if(gameState == GAME_OVER){
+        if(gameState == GAME_OVER || gameState == CREDIT){
             gameState = MAIN_MENU;
         }
     }
@@ -636,7 +640,7 @@ void initiateNewGame()
         obstacle[i] = solidObstacle[i] = fObject(RECTANGLE, -1, initPosY, 100, 100);
     }
 
-    /// Arrow Reset
+    memset(arrowPos, 0, numOfArrows*sizeof(int));
 
     iResumeTimer(0);
 }
