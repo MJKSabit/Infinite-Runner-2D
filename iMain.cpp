@@ -7,9 +7,9 @@ char *background = "bg.bmp";
 
 const int height = 600, width = 1000;
 
-enum STATES {LOADING, MAIN_MENU, PAUSE_MENU, IN_GAME, GAME_OVER, CREDIT};
+enum STATES {LOADING, MAIN_MENU, PAUSE_MENU, IN_GAME, GAME_OVER, CREDIT, INSTRUCTION};
 STATES gameState;
-char* backgrounds[] = {"Start.bmp", "menu.bmp", "pause.bmp", "back.bmp", "game-over.bmp", "credits.bmp"};
+char* backgrounds[] = {"Start.bmp", "menu.bmp", "pause.bmp", "back.bmp", "game-over.bmp", "credits.bmp", "instruction.bmp"};
 
 // char **imgUnion[3];
 
@@ -508,6 +508,7 @@ void iDraw()
         checkArrowObstacleCollusion();
         checkRunnerObstacleCollusion();
         printPoint(90, 500);
+        iText(50, 200, "[P] Pause", GLUT_BITMAP_HELVETICA_18);
     }
     else if(gameState==LOADING){
         iShowBMP(0, 0, backgrounds[gameState]);
@@ -516,23 +517,24 @@ void iDraw()
     }
     else if(gameState==MAIN_MENU){
         iShowBMP(0, 0, backgrounds[gameState]);
-        iSetColor(fColor(45, 30, 89));
+        /*iSetColor(fColor(45, 30, 89));
         iText(400, 400, "[P] New Game", GLUT_BITMAP_HELVETICA_18);
-        iText(400, 350, "[C] Credits", GLUT_BITMAP_HELVETICA_18);
-        iText(400, 300, "[END] Exit Game", GLUT_BITMAP_HELVETICA_18);
+        iText(400, 370, "[C] Credits", GLUT_BITMAP_HELVETICA_18);
+        iText(400, 340, "[I] Instructions", GLUT_BITMAP_HELVETICA_18);
+        iText(400, 310, "[END] Exit Game", GLUT_BITMAP_HELVETICA_18);*/
     }
     else if(gameState==PAUSE_MENU){
         iShowBMP(0, 0, backgrounds[gameState]);
-        iText(410, 210, "Press \'p\' to resume game");
+        //iText(410, 210, "Press \'p\' to resume game");
     }
-    else if(gameState==CREDIT)
+    else if(gameState==CREDIT || gameState==INSTRUCTION)
     {
         iShowBMP(0, 0, backgrounds[gameState]);
     }
     else{
         iShowBMP(0, 0, backgrounds[gameState]);
         printPoint(800, 200);
-        iText(200, 100, "Press [P] to start a new game; [Space] to go to main menu; [End] to exit", GLUT_BITMAP_HELVETICA_18);
+        // iText(200, 100, "Press [P] to start a new game; [Space] to go to main menu; [End] to exit", GLUT_BITMAP_HELVETICA_18);
     }
 
     /// All Draw Gone
@@ -561,9 +563,9 @@ void iKeyboard(unsigned char key)
     {
         if(gameState==MAIN_MENU) gameState = CREDIT;
     }
-    if(key=='s')
+    if(key=='i' && gameState==MAIN_MENU)
     {
-        //runner.state = 0;
+        gameState = INSTRUCTION;
     }
     if(key=='d')
     {
@@ -574,7 +576,7 @@ void iKeyboard(unsigned char key)
     {
         if(runnerState==0 && gameState==IN_GAME)
             runnerState = 2;
-        if(gameState == GAME_OVER || gameState == CREDIT){
+        if(gameState == GAME_OVER || gameState == CREDIT  || gameState==INSTRUCTION || gameState==PAUSE_MENU){
             gameState = MAIN_MENU;
         }
     }
