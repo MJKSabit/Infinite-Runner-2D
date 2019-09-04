@@ -422,11 +422,11 @@ void checkRunnerObstacleCollusion() /// Change of Algorithm: Check border for ot
 
             int tempX, tempX2, tempY;
 
-            for(tempX=nowX, tempX2=nowXmax, tempY=nowY; tempY<=nowYmax && flag && (runnerState==0 || runnerState==1); tempY+=10){
+            /*for(tempX=nowX, tempX2=nowXmax, tempY=nowY; tempY<=nowYmax && flag && (runnerState==0 || runnerState==1); tempY+=10){
                 flag = checkPoint(tempX, tempY, ObsCol1) && checkPoint(tempX2, tempY, ObsCol1);
-            }
+            }*/
 
-            for(tempX=nowX, tempY=nowYmax; tempX<=nowXmax && flag && runnerState==2; tempX+=3){
+            for(tempX=nowX, tempY=nowYmax; tempX<=nowXmax && flag/* && runnerState==2*/; tempX+=3){
                 flag = checkPoint(tempX, tempY, ObsCol1);
             }
         }
@@ -440,11 +440,11 @@ void checkRunnerObstacleCollusion() /// Change of Algorithm: Check border for ot
 
             int tempX, tempX2, tempY;
 
-            for(tempX=nowX, tempX2=nowXmax, tempY=nowY; tempY<=nowYmax && flag && (runnerState==0 || runnerState==1); tempY+=10){
+            /*for(tempX=nowX, tempX2=nowXmax, tempY=nowY; tempY<=nowYmax && flag && (runnerState==0 || runnerState==1); tempY+=10){
                 flag = checkPoint(tempX, tempY, ObsCol2) && checkPoint(tempX2, tempY, ObsCol2);
-            }
+            }*/
 
-            for(tempX=nowX, tempY=nowYmax; tempX<=nowXmax && flag && runnerState==2; tempX+=7){
+            for(tempX=nowX, tempY=nowYmax; tempX<=nowXmax && flag/* && runnerState==2*/; tempX+=7){
                 flag = checkPoint(tempX, tempY, ObsCol2);
             }
         }
@@ -478,10 +478,30 @@ void drawObstacle()
 char temp[20];
 void printPoint(int x, int y)
 {
-    sprintf(temp, "%08d", point);
+    sprintf(temp, "%06d", point);
     iSetColor(fColor(255, 80, 25));
     iText(x, y, temp, GLUT_BITMAP_HELVETICA_18);
     //printf("%s\n", temp);
+}
+
+void inGame()
+{
+    iShowBMP(0, 0, backgrounds[gameState]);
+    drawCloud();
+    iSetColor(ObsCol1);
+    drawImage(bg2);
+    drawImage(bg1);
+    drawImage(soil);
+    drawObstacle();
+    drawImage(runner);
+    drawArrow();
+    iSetColor(fColor(18, 39, 60));
+    iFilledRectangle(0, 0, bg1.width*2, height);
+
+    checkArrowObstacleCollusion();
+    checkRunnerObstacleCollusion();
+    printPoint(90, 500);
+    iText(50, 200, "[P] Pause", GLUT_BITMAP_HELVETICA_18);
 }
 
 /// Called Every time
@@ -493,27 +513,12 @@ void iDraw()
     if(gameState==IN_GAME){
         //iSetColor(fColor(18, 39, 60));
         //iFilledRectangle(0, 0, width, height);
-        iShowBMP(0, 0, backgrounds[gameState]);
-        drawCloud();
-        iSetColor(ObsCol1);
-        drawImage(bg2);
-        drawImage(bg1);
-        drawImage(soil);
-        drawObstacle();
-        drawImage(runner);
-        drawArrow();
-        iSetColor(fColor(18, 39, 60));
-        iFilledRectangle(0, 0, bg1.width*2, height);
-
-        checkArrowObstacleCollusion();
-        checkRunnerObstacleCollusion();
-        printPoint(90, 500);
-        iText(50, 200, "[P] Pause", GLUT_BITMAP_HELVETICA_18);
+        inGame();
     }
     else if(gameState==LOADING){
         iShowBMP(0, 0, backgrounds[gameState]);
 
-        if(clock()-start>1000) gameState = MAIN_MENU;
+        if(clock()-start>2000) gameState = MAIN_MENU;
     }
     else if(gameState==MAIN_MENU){
         iShowBMP(0, 0, backgrounds[gameState]);
