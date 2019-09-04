@@ -8,8 +8,26 @@ char *background = "bg.bmp";
 const int height = 600, width = 1000;
 
 enum STATES {LOADING, MAIN_MENU, PAUSE_MENU, IN_GAME, GAME_OVER, CREDIT, INSTRUCTION};
+
 STATES gameState;
 char* backgrounds[] = {"Start.bmp", "menu.bmp", "pause.bmp", "back.bmp", "game-over.bmp", "credits.bmp", "instruction.bmp"};
+char *music[] = {NULL, "menu.wav", NULL, "game.wav", "end.wav", NULL, NULL};
+char *currentMusic;
+
+typedef struct{
+    int x, y;
+    char key;
+} MenuItem;
+
+MenuItem fMenuItem(int x, int y, char key)
+{
+    MenuItem m;
+    m.x = x; m.y = y; m.key = key;
+    return m;
+}
+
+MenuItem *menu[7];
+int numOfItem[7] = {0, 4, 3, 0, 3, 1, 1};
 
 // char **imgUnion[3];
 
@@ -110,6 +128,7 @@ void drawImage(Object img);
 /// Objects END
 
 void animateRunner();
+void ChangeScreen(STATES to);
 
 Object runner;
 int runnerState, runningIndex=0, throwingIndex=-1, jumpingIndex;
@@ -189,9 +208,9 @@ void animateJumping()
 
     //printf("%d %f %f %f\n", jumpingIndex, jumpingVel, jumpingAcc, getPosY(runner));
 
-    clock_t time = clock()-runner.StartTime;
+    // clock_t time = clock()-runner.StartTime; /// DEBUG: Jump - Pause
 
-    if((time) > animatingTime*jumpingTStep || runner.centerY < initPosY)  /// End of Jumping
+    if(jumpingT >= jumpingTStep || runner.centerY < initPosY)  /// End of Jumping
     {
         jumpingIndex = -1;
         runnerState = 0;
@@ -388,7 +407,7 @@ void checkArrowObstacleCollusion()
         for(j=0; j<4 && arrowPos[i]>0; j++)
         {
 
-            if(obstacle[j].centerX-arrowPos[i]<=obstacle[j].width && 2*obstacle[j].centerX>width && arrowPos[i]>5)
+            if(obstacle[j].centerX<=arrowPos[i]+20 && arrowPos[j]-obstacle[j].centerX<=obstacle[j].width+20 && 2*obstacle[j].centerX>width && arrowPos[i]>5)
             {
                 obstacle[j].centerX = 0;
                 arrowPos[i] = 0;
@@ -450,7 +469,7 @@ void checkRunnerObstacleCollusion() /// Change of Algorithm: Check border for ot
         }
         if(!flag){
             iPauseTimer(0);
-            gameState = GAME_OVER;
+            ChangeScreen(GAME_OVER);
         }
     }
 }
@@ -484,6 +503,14 @@ void printPoint(int x, int y)
     //printf("%s\n", temp);
 }
 
+
+
+void ChangeScreen(STATES to)
+{
+    gameState = to;
+    if(music[to]!=NULL && currentMusic!=music[to]) PlaySound(currentMusic=music[to], NULL, SND_ASYNC|SND_LOOP|SND_FILENAME);
+}
+
 void inGame()
 {
     iShowBMP(0, 0, backgrounds[gameState]);
@@ -509,6 +536,7 @@ void iDraw()
 {
     int i;
     iClear();
+    printf("flag\n");
 
     if(gameState==IN_GAME){
         //iSetColor(fColor(18, 39, 60));
@@ -518,7 +546,7 @@ void iDraw()
     else if(gameState==LOADING){
         iShowBMP(0, 0, backgrounds[gameState]);
 
-        if(clock()-start>2000) gameState = MAIN_MENU;
+        if(clock()-start>2000) ChangeScreen(MAIN_MENU);
     }
     else if(gameState==MAIN_MENU){
         iShowBMP(0, 0, backgrounds[gameState]);
@@ -552,7 +580,9 @@ void iMouseMove(int mx, int my)
 
 void iMouse(int button, int state, int mx, int my)
 {
-
+    if(button==GLUT_LEFT && state==GLUT_DOWN){
+        printf("(%d, %d)\n", mx, my);
+    }
 }
 
 void varInitialize();
@@ -566,11 +596,11 @@ void iKeyboard(unsigned char key)
 {
     if(key=='c')
     {
-        if(gameState==MAIN_MENU) gameState = CREDIT;
+        if(gameState==MAIN_MENU) ChangeScreen(CREDIT);
     }
     if(key=='i' && gameState==MAIN_MENU)
     {
-        gameState = INSTRUCTION;
+        ChangeScreen(INSTRUCTION);
     }
     if(key=='d')
     {
@@ -582,27 +612,27 @@ void iKeyboard(unsigned char key)
         if(runnerState==0 && gameState==IN_GAME)
             runnerState = 2;
         if(gameState == GAME_OVER || gameState == CREDIT  || gameState==INSTRUCTION || gameState==PAUSE_MENU){
-            gameState = MAIN_MENU;
+            ChangeScreen(MAIN_MENU);
         }
     }
     if(key=='p')
     {
         if(gameState==GAME_OVER){
-            gameState=IN_GAME;
+            ChangeScreen(IN_GAME);
             initiateNewGame();
         }
         else if(gameState==IN_GAME){
             iPauseTimer(0);
-            gameState = PAUSE_MENU;
+            ChangeScreen(PAUSE_MENU);
         }
         else if(gameState==MAIN_MENU) {
             initiateNewGame();
-            gameState = IN_GAME;
+            ChangeScreen(IN_GAME);
         }
         else if(gameState==PAUSE_MENU)
         {
             iResumeTimer(0);
-            gameState = IN_GAME;
+            ChangeScreen(IN_GAME);
         }
     }
 }
@@ -640,6 +670,9 @@ void initiateNewGame()
     runner = fObject(IMAGE, width/2-100, initPosY, 115, 112);
     strcpy(runner.img.location, run[0]);
     runnerState = 0;
+    runningIndex=0;
+    throwingIndex=-1;
+    jumpingT=-1;
 
     int i=0;
     for(i=0; i<4; i++)
@@ -668,6 +701,13 @@ void varInitialize()
 
     ObsCol1 = fColor(200, 30, 20);
     ObsCol2 = fColor(200, 240, 30);
+
+    /*menu[MAIN_MENU] = (MenuItem*) malloc(sizeof(MenuItem)*numOfItem[MAIN_MENU]);
+
+    menu[MAIN_MENU][0] = fMenuItem(298, 470, 'p');
+    menu[MAIN_MENU][1] = fMenuItem(298, 434, 'i');
+    menu[MAIN_MENU][2] = fMenuItem(298, 398, 'c');
+    menu[MAIN_MENU][3] = fMenuItem(298, 363, GLUT_KEY_END);*/
 }
 
 

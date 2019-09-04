@@ -22,6 +22,7 @@
 					<Add library="glut32" />
 					<Add library="OPENGL32" />
 					<Add library="gdi32" />
+					<Add library="winmm" />
 					<Add directory="./OpenGL/lib" />
 				</Linker>
 				<ExtraCommands>
