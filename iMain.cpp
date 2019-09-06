@@ -27,7 +27,8 @@ MenuItem fMenuItem(int x, int y, char key)
 }
 
 MenuItem *menu[7];
-int numOfItem[7] = {0, 4, 3, 0, 3, 1, 1};
+int numOfItem[7] = {0, 4, 3, 0, 3, 0, 0};
+int itemPos = 0;
 
 // char **imgUnion[3];
 
@@ -319,7 +320,7 @@ void moveObstacles(int px)
             {
                 last_obstacle = clock();
                 obstacle[i].centerX = width;
-                obstacle[i].width = obstacleMinW + rand()%(obstacleMaxW-obstacleMinW);
+                obstacle[i].width = obstacleMinW + rand()%(obstacleMaxW-obstacleMinW) + (point>500?(point/100)*(rand()%10):0);
 
             }
         }
@@ -508,7 +509,8 @@ void printPoint(int x, int y)
 void ChangeScreen(STATES to)
 {
     gameState = to;
-    if(music[to]!=NULL && currentMusic!=music[to]) PlaySound(currentMusic=music[to], NULL, SND_ASYNC|SND_LOOP|SND_FILENAME);
+    itemPos = 0;
+    if(music[to]!=NULL && currentMusic!=music[to]) PlaySound(currentMusic=music[to], NULL, SND_ASYNC|SND_LOOP|SND_FILENAME|SND_NODEFAULT);
 }
 
 void inGame()
@@ -536,7 +538,7 @@ void iDraw()
 {
     int i;
     iClear();
-    printf("flag\n");
+    //printf("flag\n");
 
     if(gameState==IN_GAME){
         //iSetColor(fColor(18, 39, 60));
@@ -570,6 +572,12 @@ void iDraw()
         // iText(200, 100, "Press [P] to start a new game; [Space] to go to main menu; [End] to exit", GLUT_BITMAP_HELVETICA_18);
     }
 
+    /// Draw Menu
+    if(numOfItem[gameState]!=0){
+        iSetColor(fColor(255,255,0));
+        iFilledCircle(menu[gameState][itemPos].x, menu[gameState][itemPos].y, 10, 6);
+    }
+
     /// All Draw Gone
 }
 
@@ -598,16 +606,16 @@ void iKeyboard(unsigned char key)
     {
         if(gameState==MAIN_MENU) ChangeScreen(CREDIT);
     }
-    if(key=='i' && gameState==MAIN_MENU)
+    else if(key=='i' && gameState==MAIN_MENU)
     {
         ChangeScreen(INSTRUCTION);
     }
-    if(key=='d')
+    else if(key=='d')
     {
         if(runnerState==0 && gameState==IN_GAME)
             runnerState = 1;
     }
-    if(key==' ')
+    else if(key==' ')
     {
         if(runnerState==0 && gameState==IN_GAME)
             runnerState = 2;
@@ -615,7 +623,7 @@ void iKeyboard(unsigned char key)
             ChangeScreen(MAIN_MENU);
         }
     }
-    if(key=='p')
+    else if(key=='p')
     {
         if(gameState==GAME_OVER){
             ChangeScreen(IN_GAME);
@@ -623,6 +631,7 @@ void iKeyboard(unsigned char key)
         }
         else if(gameState==IN_GAME){
             iPauseTimer(0);
+            last_obstacle = clock()-last_obstacle;
             ChangeScreen(PAUSE_MENU);
         }
         else if(gameState==MAIN_MENU) {
@@ -632,8 +641,13 @@ void iKeyboard(unsigned char key)
         else if(gameState==PAUSE_MENU)
         {
             iResumeTimer(0);
+            last_obstacle = clock()-last_obstacle;
             ChangeScreen(IN_GAME);
         }
+    }
+    else if(key=='e') exit(0);
+    else if(key==13 && numOfItem[gameState]!=0){
+        iKeyboard(menu[gameState][itemPos].key);
     }
 }
 
@@ -653,13 +667,13 @@ void iSpecialKeyboard(unsigned char key)
     {
         exit(0);
     }
-    if(key == GLUT_KEY_RIGHT)
+    if(key == GLUT_KEY_DOWN || key == GLUT_KEY_RIGHT)
     {
-
+        if(numOfItem[gameState]) itemPos = (itemPos+1)%numOfItem[gameState];
     }
-    if(key == GLUT_KEY_LEFT)
+    if(key == GLUT_KEY_UP || key == GLUT_KEY_LEFT)
     {
-
+        if(numOfItem[gameState]) itemPos = (itemPos+numOfItem[gameState]-1)%numOfItem[gameState];
     }
     //place your codes for other keys here
 }
@@ -702,12 +716,21 @@ void varInitialize()
     ObsCol1 = fColor(200, 30, 20);
     ObsCol2 = fColor(200, 240, 30);
 
-    /*menu[MAIN_MENU] = (MenuItem*) malloc(sizeof(MenuItem)*numOfItem[MAIN_MENU]);
-
+    menu[MAIN_MENU] = (MenuItem*) malloc(sizeof(MenuItem)*numOfItem[MAIN_MENU]);
     menu[MAIN_MENU][0] = fMenuItem(298, 470, 'p');
     menu[MAIN_MENU][1] = fMenuItem(298, 434, 'i');
     menu[MAIN_MENU][2] = fMenuItem(298, 398, 'c');
-    menu[MAIN_MENU][3] = fMenuItem(298, 363, GLUT_KEY_END);*/
+    menu[MAIN_MENU][3] = fMenuItem(298, 363, 'e');
+
+    menu[PAUSE_MENU] = (MenuItem*) malloc(sizeof(MenuItem)*numOfItem[PAUSE_MENU]);
+    menu[PAUSE_MENU][0] = fMenuItem(190, 560, 'p');
+    menu[PAUSE_MENU][1] = fMenuItem(190, 500, ' ');
+    menu[PAUSE_MENU][2] = fMenuItem(190, 440, 'e');
+
+    menu[GAME_OVER] = (MenuItem*) malloc(sizeof(MenuItem)*numOfItem[GAME_OVER]);
+    menu[GAME_OVER][0] = fMenuItem(10, 47, 'p');
+    menu[GAME_OVER][1] = fMenuItem(295, 47, ' ');
+    menu[GAME_OVER][2] = fMenuItem(760, 47, 'e');
 }
 
 

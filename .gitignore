@@ -3,4 +3,5 @@ obj
 *.depend
 *.layout
 *.exe
+*.wav
 Image-Source\*
