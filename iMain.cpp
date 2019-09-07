@@ -7,11 +7,11 @@ char *background = "bg.bmp";
 
 const int height = 600, width = 1000;
 
-enum STATES {LOADING, MAIN_MENU, PAUSE_MENU, IN_GAME, GAME_OVER, CREDIT, INSTRUCTION};
+enum STATES {LOADING, MAIN_MENU, PAUSE_MENU, IN_GAME, GAME_OVER, CREDIT, INSTRUCTION, HIGH_SCORE};
 
 STATES gameState;
-char* backgrounds[] = {"Start.bmp", "menu.bmp", "pause.bmp", "back.bmp", "game-over.bmp", "credits.bmp", "instruction.bmp"};
-char *music[] = {NULL, "menu.wav", NULL, "game.wav", "end.wav", NULL, NULL};
+char* backgrounds[] = {"Start.bmp", "menu.bmp", "pause.bmp", "back.bmp", "game-over.bmp", "credits.bmp", "instruction.bmp", "hiscore.bmp"};
+char *music[] = {NULL, "menu.wav", NULL, "game.wav", "end.wav", NULL, NULL, NULL};
 char *currentMusic;
 
 typedef struct{
@@ -26,8 +26,8 @@ MenuItem fMenuItem(int x, int y, char key)
     return m;
 }
 
-MenuItem *menu[7];
-int numOfItem[7] = {0, 4, 3, 0, 3, 0, 0};
+MenuItem *menu[8];
+int numOfItem[] = {0, 5, 3, 0, 3, 0, 0, 0};
 int itemPos = 0;
 
 // char **imgUnion[3];
@@ -41,8 +41,12 @@ int cloudPos[3], cloudX[3], cloudMin = 300, cloudMax = 550;
 
 /// Point System
 int point = 0;
+int newHighScore = 0;
 
 //int i;
+
+int getHighScore();
+void setHighScore(int);
 
 /// Color Modules
 typedef struct
@@ -496,10 +500,10 @@ void drawObstacle()
 }
 
 char temp[20];
-void printPoint(int x, int y)
+void printPoint(int x, int y, int pts)
 {
-    sprintf(temp, "%06d", point);
-    iSetColor(fColor(255, 80, 25));
+    sprintf(temp, "%06d", pts);
+    iSetColor(fColor(255, 255, 25));
     iText(x, y, temp, GLUT_BITMAP_HELVETICA_18);
     //printf("%s\n", temp);
 }
@@ -511,7 +515,18 @@ void ChangeScreen(STATES to)
     gameState = to;
     itemPos = 0;
     if(music[to]!=NULL && currentMusic!=music[to]) PlaySound(currentMusic=music[to], NULL, SND_ASYNC|SND_LOOP|SND_FILENAME|SND_NODEFAULT);
+
+    if(gameState == GAME_OVER && getHighScore()<point){
+        setHighScore(point);
+        newHighScore = point;
+    }
+    if(gameState == MAIN_MENU){
+        newHighScore = 0;
+    }
 }
+
+FILE *file;
+char fileRead[30];
 
 void inGame()
 {
@@ -529,9 +544,10 @@ void inGame()
 
     checkArrowObstacleCollusion();
     checkRunnerObstacleCollusion();
-    printPoint(90, 500);
+    printPoint(90, 500, point);
     iText(50, 200, "[P] Pause", GLUT_BITMAP_HELVETICA_18);
 }
+
 
 /// Called Every time
 void iDraw()
@@ -566,9 +582,19 @@ void iDraw()
     {
         iShowBMP(0, 0, backgrounds[gameState]);
     }
+    else if(gameState==HIGH_SCORE)
+    {
+        iShowBMP(0, 0, backgrounds[gameState]);
+        printPoint(400, 400, getHighScore());
+    }
     else{
         iShowBMP(0, 0, backgrounds[gameState]);
-        printPoint(800, 200);
+
+        iSetColor(fColor(255, 255, 255));
+
+        if(newHighScore==point) iText(700, 250, "N E W   H I G H S C O R E !", GLUT_BITMAP_HELVETICA_18);
+
+        printPoint(800, 200, point);
         // iText(200, 100, "Press [P] to start a new game; [Space] to go to main menu; [End] to exit", GLUT_BITMAP_HELVETICA_18);
     }
 
@@ -600,11 +626,35 @@ void initiateNewGame();
 	function iKeyboard() is called whenever the user hits a key in keyboard.
 	key- holds the ASCII value of the key pressed.
 	*/
+
+int getHighScore()
+{
+    int highScore;
+    file = fopen("hiscore.txt", "r");
+
+    fscanf(file, "%d", &highScore);
+
+    fclose(file);
+    return highScore;
+}
+
+void setHighScore(int highScore)
+{
+    file = fopen("hiscore.txt", "w");
+
+    fprintf(file, "%d", highScore);
+    fclose(file);
+}
+
 void iKeyboard(unsigned char key)
 {
     if(key=='c')
     {
         if(gameState==MAIN_MENU) ChangeScreen(CREDIT);
+    }
+    else if(key=='h' && gameState==MAIN_MENU)
+    {
+        ChangeScreen(HIGH_SCORE);
     }
     else if(key=='i' && gameState==MAIN_MENU)
     {
@@ -619,7 +669,7 @@ void iKeyboard(unsigned char key)
     {
         if(runnerState==0 && gameState==IN_GAME)
             runnerState = 2;
-        if(gameState == GAME_OVER || gameState == CREDIT  || gameState==INSTRUCTION || gameState==PAUSE_MENU){
+        if(gameState == GAME_OVER || gameState == CREDIT  || gameState==INSTRUCTION || gameState==PAUSE_MENU || gameState==HIGH_SCORE){
             ChangeScreen(MAIN_MENU);
         }
     }
@@ -716,11 +766,15 @@ void varInitialize()
     ObsCol1 = fColor(200, 30, 20);
     ObsCol2 = fColor(200, 240, 30);
 
+    music[0] = music[1];
+
     menu[MAIN_MENU] = (MenuItem*) malloc(sizeof(MenuItem)*numOfItem[MAIN_MENU]);
     menu[MAIN_MENU][0] = fMenuItem(298, 470, 'p');
-    menu[MAIN_MENU][1] = fMenuItem(298, 434, 'i');
-    menu[MAIN_MENU][2] = fMenuItem(298, 398, 'c');
-    menu[MAIN_MENU][3] = fMenuItem(298, 363, 'e');
+    menu[MAIN_MENU][1] = fMenuItem(298, 434, 'h');
+    menu[MAIN_MENU][2] = fMenuItem(298, 398, 'i');
+    menu[MAIN_MENU][3] = fMenuItem(298, 363, 'c');
+    menu[MAIN_MENU][4] = fMenuItem(298, 328, 'e');
+
 
     menu[PAUSE_MENU] = (MenuItem*) malloc(sizeof(MenuItem)*numOfItem[PAUSE_MENU]);
     menu[PAUSE_MENU][0] = fMenuItem(190, 560, 'p');
