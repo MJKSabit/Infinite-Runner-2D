@@ -1,20 +1,25 @@
 #define _CRT_SECURE_NO_WARNINGS
 # include "iGraphics.h"
 
+/// Variables and Constant :: GLOBAL DECLARATION
+
 int ignoreColor = 0x804080;
 char *background = "bg.bmp";
 
-
 const int height = 600, width = 1000;
 
+/// Game Screens
 enum STATES {LOADING, MAIN_MENU, PAUSE_MENU, IN_GAME, GAME_OVER, CREDIT, INSTRUCTION, HIGH_SCORE};
-
 STATES gameState;
+
 char* backgrounds[] = {"Start.bmp", "menu.bmp", "pause.bmp", "back.bmp", "game-over.bmp", "credits.bmp", "instruction.bmp", "hiscore.bmp"};
+
 char *music[] = {NULL, "menu.wav", NULL, "game.wav", "end.wav", NULL, NULL, NULL};
 char *currentMusic;
 
-typedef struct{
+/// Menu Composition
+typedef struct
+{
     int x, y;
     char key;
 } MenuItem;
@@ -22,31 +27,40 @@ typedef struct{
 MenuItem fMenuItem(int x, int y, char key)
 {
     MenuItem m;
-    m.x = x; m.y = y; m.key = key;
+    m.x = x;
+    m.y = y;
+    m.key = key;
     return m;
 }
 
 MenuItem *menu[8];
 int numOfItem[] = {0, 5, 3, 0, 3, 0, 0, 0};
 int itemPos = 0;
+/// Menu item finished
 
-// char **imgUnion[3];
+const int initPosY = 40; /// Soil Distance Upward
+const int soilW = 37, posSoil = soilW; /// Soil Picture width
+const int bgW = 200, bgPos = bgW, bg2Pos=bgW; /// Moving Background width
 
-const int velocityTimeStep = 21, heightY = 20, initPosY = 40;
-int velT;
+int cloudPos[3], cloudX[3], cloudMin = 300, cloudMax = 550; /// Cloud Variables
+clock_t animatingTime = 50, last_cloud = -4000, start = clock(); /// In MiliSec
 
-const int soilW = 37, posSoil = soilW;
-const int bgW = 200, bgPos = bgW, bg2Pos=bgW;
-int cloudPos[3], cloudX[3], cloudMin = 300, cloudMax = 550;
+const int obstacleMaxW = 51, obstacleMinW = 40; /// Obstacle Minimum & Maximum Width
+
 
 /// Point System
 int point = 0;
 int newHighScore = 0;
 
-//int i;
-
+/// Function Declaration
 int getHighScore();
 void setHighScore(int);
+void animateRunner();
+void ChangeScreen(STATES to);
+void checkRunnerObstacleCollusion();
+void varInitialize();
+void initiateNewGame();
+
 
 /// Color Modules
 typedef struct
@@ -68,10 +82,7 @@ Color fColor(int r, int g, int b)
 /// Image Module
 typedef struct
 {
-    double posX, posY;//, velY, decY;
-    //double centerX, centerY, yRange, xRange;
-
-    //int idx[3], state; /// state = 0: running, 2: jumping, 1: throwing
+    double posX, posY;
     char location[40];
 } Image;
 
@@ -84,7 +95,6 @@ Image fImage(char* loc, int posX, int posY)
 
     return res;
 }
-
 /// Image END
 
 /// Objects
@@ -132,23 +142,35 @@ void resetClock(Object *obj)
 void drawImage(Object img);
 /// Objects END
 
-void animateRunner();
-void ChangeScreen(STATES to);
-
 Object runner;
-int runnerState, runningIndex=0, throwingIndex=-1, jumpingIndex;
+
+enum RUNNER_STATE {RUNNING, THROWING, JUMPING};
+RUNNER_STATE  runnerState;
+
+int runningIndex=0, throwingIndex=-1, jumpingIndex;
+
 char *run[6] = {"r1.bmp", "r2.bmp", "r3.bmp", "r4.bmp", "r5.bmp", "r6.bmp"};
 char *thr[3] = {"t1.bmp", "t2.bmp", "t3.bmp"};
 char *jump[4] = {/*"j1.bmp",*/ "j2.bmp", "j3.bmp", "j4.bmp", "j5.bmp"};
-char *arrow_loc = "arrow.bmp";
+
 int numberOfPic[] = {6, 3, 4};
 
-clock_t animatingTime = 50, last_cloud = -4000, last_obstacle, start = clock(); /// In MiliSec
+/// Arrow composition
+char *arrow_loc = "arrow.bmp";
+typedef int Arrow;
+int numOfArrows = 15;
+Arrow arrowPos[15];
+/// Arrow Finished
 
+clock_t last_obstacle; /// In MiliSec
+
+/// Jumping Variables
 const int jumpingHeight = 120, jumpingTStep=17; /// In Pixel
 int jumpingT=-1;
 double jumpingVel;// = 4.0*jumpingHeight/jumpingTime;
 double jumpingAcc;
+
+
 Color ObsCol1, ObsCol2, bg = fColor(218, 239, 260);
 
 Object soil, bg1, bg2, obstacle[4], solidObstacle[4];
@@ -160,13 +182,7 @@ void animateRunning()
         runningIndex -= numberOfPic[runnerState];
 
     strcpy(runner.img.location, run[runningIndex]);
-    //printf("%s = %s\n", runner.img.location, run[runningIndex]);
 }
-
-
-typedef int Arrow;
-int numOfArrows = 15;
-Arrow arrowPos[15];
 
 void throwArrow()
 {
@@ -182,10 +198,11 @@ void animateThrowing()
 
     if(throwingIndex == numberOfPic[runnerState])
     {
-        runnerState = 0; /// RunningState
+        runnerState = RUNNING; /// RunningState
         throwingIndex = -1;
 
-        if(point>=100){
+        if(point>=100)
+        {
             throwArrow();
             point-=100;
         }
@@ -211,14 +228,10 @@ void animateJumping()
         runningIndex = 0;
     }
 
-    //printf("%d %f %f %f\n", jumpingIndex, jumpingVel, jumpingAcc, getPosY(runner));
-
-    // clock_t time = clock()-runner.StartTime; /// DEBUG: Jump - Pause
-
     if(jumpingT >= jumpingTStep || runner.centerY < initPosY)  /// End of Jumping
     {
         jumpingIndex = -1;
-        runnerState = 0;
+        runnerState = RUNNING;
         runner.centerY = initPosY;
         runningIndex = 4;
         jumpingT=-1;
@@ -248,15 +261,15 @@ void animateJumping()
 }
 
 
-/** todo: use enum instead of 0, 1 for state */
+/* todo: use enum instead of 0, 1 for state *////Done
 void animateRunner()
 {
 
-    if(runnerState==0)
+    if(runnerState==RUNNING)
     {
         animateRunning();
     }
-    else if(runnerState==1)
+    else if(runnerState==THROWING)
     {
         animateThrowing();
     }
@@ -309,8 +322,6 @@ void moveCloud()
     }
 }
 
-const int obstacleMaxW = 51, obstacleMinW = 40;
-
 void moveObstacles(int px)
 {
     int i;
@@ -331,7 +342,8 @@ void moveObstacles(int px)
 
         if(solidObstacle[i].centerX>0)
             moveObject(&solidObstacle[i], px);
-        else{
+        else
+        {
             if(clock()-last_obstacle>1500+(rand()%100+1)*(rand()%10+10) && clock()%3==0)
             {
                 last_obstacle = clock();
@@ -341,8 +353,6 @@ void moveObstacles(int px)
         }
     }
 }
-
-void checkRunnerObstacleCollusion();
 
 void animate()
 {
@@ -450,7 +460,8 @@ void checkRunnerObstacleCollusion() /// Change of Algorithm: Check border for ot
                 flag = checkPoint(tempX, tempY, ObsCol1) && checkPoint(tempX2, tempY, ObsCol1);
             }*/
 
-            for(tempX=nowX, tempY=nowYmax; tempX<=nowXmax && flag/* && runnerState==2*/; tempX+=3){
+            for(tempX=nowX, tempY=nowYmax; tempX<=nowXmax && flag/* && runnerState==2*/; tempX+=3)
+            {
                 flag = checkPoint(tempX, tempY, ObsCol1);
             }
         }
@@ -468,11 +479,13 @@ void checkRunnerObstacleCollusion() /// Change of Algorithm: Check border for ot
                 flag = checkPoint(tempX, tempY, ObsCol2) && checkPoint(tempX2, tempY, ObsCol2);
             }*/
 
-            for(tempX=nowX, tempY=nowYmax; tempX<=nowXmax && flag/* && runnerState==2*/; tempX+=7){
+            for(tempX=nowX, tempY=nowYmax; tempX<=nowXmax && flag/* && runnerState==2*/; tempX+=7)
+            {
                 flag = checkPoint(tempX, tempY, ObsCol2);
             }
         }
-        if(!flag){
+        if(!flag)
+        {
             iPauseTimer(0);
             ChangeScreen(GAME_OVER);
         }
@@ -499,6 +512,7 @@ void drawObstacle()
 
 }
 
+
 char temp[20];
 void printPoint(int x, int y, int pts)
 {
@@ -508,19 +522,20 @@ void printPoint(int x, int y, int pts)
     //printf("%s\n", temp);
 }
 
-
-
 void ChangeScreen(STATES to)
 {
     gameState = to;
     itemPos = 0;
-    if(music[to]!=NULL && currentMusic!=music[to]) PlaySound(currentMusic=music[to], NULL, SND_ASYNC|SND_LOOP|SND_FILENAME|SND_NODEFAULT);
+    if(music[to]!=NULL && currentMusic!=music[to])
+        PlaySound(currentMusic=music[to], NULL, SND_ASYNC|SND_LOOP|SND_FILENAME|SND_NODEFAULT);
 
-    if(gameState == GAME_OVER && getHighScore()<point){
+    if(gameState == GAME_OVER && getHighScore()<point)
+    {
         setHighScore(point);
         newHighScore = point;
     }
-    if(gameState == MAIN_MENU){
+    else if(gameState == MAIN_MENU)
+    {
         newHighScore = 0;
     }
 }
@@ -556,17 +571,21 @@ void iDraw()
     iClear();
     //printf("flag\n");
 
-    if(gameState==IN_GAME){
+    if(gameState==IN_GAME)
+    {
         //iSetColor(fColor(18, 39, 60));
         //iFilledRectangle(0, 0, width, height);
         inGame();
     }
-    else if(gameState==LOADING){
+    else if(gameState==LOADING)
+    {
         iShowBMP(0, 0, backgrounds[gameState]);
 
-        if(clock()-start>2000) ChangeScreen(MAIN_MENU);
+        if(clock()-start>2000)
+            ChangeScreen(MAIN_MENU);
     }
-    else if(gameState==MAIN_MENU){
+    else if(gameState==MAIN_MENU)
+    {
         iShowBMP(0, 0, backgrounds[gameState]);
         /*iSetColor(fColor(45, 30, 89));
         iText(400, 400, "[P] New Game", GLUT_BITMAP_HELVETICA_18);
@@ -574,7 +593,8 @@ void iDraw()
         iText(400, 340, "[I] Instructions", GLUT_BITMAP_HELVETICA_18);
         iText(400, 310, "[END] Exit Game", GLUT_BITMAP_HELVETICA_18);*/
     }
-    else if(gameState==PAUSE_MENU){
+    else if(gameState==PAUSE_MENU)
+    {
         iShowBMP(0, 0, backgrounds[gameState]);
         //iText(410, 210, "Press \'p\' to resume game");
     }
@@ -587,19 +607,22 @@ void iDraw()
         iShowBMP(0, 0, backgrounds[gameState]);
         printPoint(400, 400, getHighScore());
     }
-    else{
+    else
+    {
         iShowBMP(0, 0, backgrounds[gameState]);
 
         iSetColor(fColor(255, 255, 255));
 
-        if(newHighScore==point) iText(700, 250, "N E W   H I G H S C O R E !", GLUT_BITMAP_HELVETICA_18);
+        if(newHighScore==point)
+            iText(700, 250, "N E W   H I G H S C O R E !", GLUT_BITMAP_HELVETICA_18);
 
         printPoint(800, 200, point);
         // iText(200, 100, "Press [P] to start a new game; [Space] to go to main menu; [End] to exit", GLUT_BITMAP_HELVETICA_18);
     }
 
     /// Draw Menu
-    if(numOfItem[gameState]!=0){
+    if(numOfItem[gameState]!=0)
+    {
         iSetColor(fColor(255,255,0));
         iFilledCircle(menu[gameState][itemPos].x, menu[gameState][itemPos].y, 10, 6);
     }
@@ -614,13 +637,11 @@ void iMouseMove(int mx, int my)
 
 void iMouse(int button, int state, int mx, int my)
 {
-    if(button==GLUT_LEFT && state==GLUT_DOWN){
-        printf("(%d, %d)\n", mx, my);
+    if(button==GLUT_LEFT && state==GLUT_DOWN)
+    {
+        //printf("(%d, %d)\n", mx, my);
     }
 }
-
-void varInitialize();
-void initiateNewGame();
 
 /*
 	function iKeyboard() is called whenever the user hits a key in keyboard.
@@ -648,9 +669,13 @@ void setHighScore(int highScore)
 
 void iKeyboard(unsigned char key)
 {
+    if(key>='A' && key<='Z')
+        key = 'a'+(key-'A');
+
     if(key=='c')
     {
-        if(gameState==MAIN_MENU) ChangeScreen(CREDIT);
+        if(gameState==MAIN_MENU)
+            ChangeScreen(CREDIT);
     }
     else if(key=='h' && gameState==MAIN_MENU)
     {
@@ -662,29 +687,33 @@ void iKeyboard(unsigned char key)
     }
     else if(key=='d')
     {
-        if(runnerState==0 && gameState==IN_GAME)
-            runnerState = 1;
+        if(runnerState==RUNNING && gameState==IN_GAME)
+            runnerState = THROWING;
     }
     else if(key==' ')
     {
-        if(runnerState==0 && gameState==IN_GAME)
-            runnerState = 2;
-        if(gameState == GAME_OVER || gameState == CREDIT  || gameState==INSTRUCTION || gameState==PAUSE_MENU || gameState==HIGH_SCORE){
+        if(runnerState==RUNNING && gameState==IN_GAME)
+            runnerState = JUMPING;
+        if(gameState == GAME_OVER || gameState == CREDIT  || gameState==INSTRUCTION || gameState==PAUSE_MENU || gameState==HIGH_SCORE)
+        {
             ChangeScreen(MAIN_MENU);
         }
     }
     else if(key=='p')
     {
-        if(gameState==GAME_OVER){
+        if(gameState==GAME_OVER)
+        {
             ChangeScreen(IN_GAME);
             initiateNewGame();
         }
-        else if(gameState==IN_GAME){
+        else if(gameState==IN_GAME)
+        {
             iPauseTimer(0);
             last_obstacle = clock()-last_obstacle;
             ChangeScreen(PAUSE_MENU);
         }
-        else if(gameState==MAIN_MENU) {
+        else if(gameState==MAIN_MENU)
+        {
             initiateNewGame();
             ChangeScreen(IN_GAME);
         }
@@ -695,8 +724,10 @@ void iKeyboard(unsigned char key)
             ChangeScreen(IN_GAME);
         }
     }
-    else if(key=='e') exit(0);
-    else if(key==13 && numOfItem[gameState]!=0){
+    else if(key=='e')
+        exit(0);
+    else if(key==13 && numOfItem[gameState]!=0)
+    {
         iKeyboard(menu[gameState][itemPos].key);
     }
 }
@@ -719,11 +750,13 @@ void iSpecialKeyboard(unsigned char key)
     }
     if(key == GLUT_KEY_DOWN || key == GLUT_KEY_RIGHT)
     {
-        if(numOfItem[gameState]) itemPos = (itemPos+1)%numOfItem[gameState];
+        if(numOfItem[gameState])
+            itemPos = (itemPos+1)%numOfItem[gameState];
     }
     if(key == GLUT_KEY_UP || key == GLUT_KEY_LEFT)
     {
-        if(numOfItem[gameState]) itemPos = (itemPos+numOfItem[gameState]-1)%numOfItem[gameState];
+        if(numOfItem[gameState])
+            itemPos = (itemPos+numOfItem[gameState]-1)%numOfItem[gameState];
     }
     //place your codes for other keys here
 }
@@ -733,7 +766,7 @@ void initiateNewGame()
     point = 0;
     runner = fObject(IMAGE, width/2-100, initPosY, 115, 112);
     strcpy(runner.img.location, run[0]);
-    runnerState = 0;
+    runnerState = RUNNING;
     runningIndex=0;
     throwingIndex=-1;
     jumpingT=-1;
