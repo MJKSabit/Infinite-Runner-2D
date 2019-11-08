@@ -6,7 +6,7 @@
 int ignoreColor = 0x804080;
 //char *background = "bg.bmp";
 
-const int height = 600, width = 1000, difficulity=200;
+const int height = 600, width = 1000;
 
 /// Game Screens
 enum STATES {LOADING, MAIN_MENU, PAUSE_MENU, IN_GAME, GAME_OVER, CREDIT, INSTRUCTION, HIGH_SCORE};
@@ -262,6 +262,8 @@ void animateJumping()
 
 
 /* todo: use enum instead of 0, 1 for state *////Done
+void checkRunnerObstacleCollusion();
+
 void animateRunner()
 {
 
@@ -335,7 +337,7 @@ void moveObstacles(int px)
             {
                 last_obstacle = 0;
                 obstacle[i].centerX = width;
-                obstacle[i].width = obstacleMinW + rand()%(obstacleMaxW-obstacleMinW) + (point>difficulity?(point/100)*(rand()%10):0);
+                obstacle[i].width = obstacleMinW + rand()%(obstacleMaxW-obstacleMinW) + (point>500?(point/100)*(rand()%10):0);
 
             }
         }
@@ -366,7 +368,7 @@ void animate()
 
     point++;
     animateRunner();
-    // checkRunnerObstacleCollusion();
+    // if(gameState==IN_GAME) checkRunnerObstacleCollusion();
 }
 
 
@@ -642,8 +644,6 @@ void iMouse(int button, int state, int mx, int my)
     if(button==GLUT_LEFT && state==GLUT_DOWN)
     {
         //printf("(%d, %d)\n", mx, my);
-        if(runnerState==RUNNING && gameState==IN_GAME)
-            runnerState = THROWING;
     }
 }
 
@@ -834,7 +834,7 @@ int main()
     gameState = LOADING;
     varInitialize();
 
-    initiateNewGame();
+    //initiateNewGame();
 
     iInitialize(width, height, "Infinite Runner 2D");
     return 0;
